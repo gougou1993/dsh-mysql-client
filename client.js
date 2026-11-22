@@ -21,6 +21,10 @@ window.__ModuleLoader__.load({
       title: 'MySQL 客户端', subtitle: '管理连接，新建查询页面，执行 SQL 语句。',
       connections: '连接', newConn: '新建连接', edit: '编辑', del: '删除', save: '保存', cancel: '取消',
       name: '名称', host: '地址', port: '端口', user: '用户名', password: '密码',
+      import: '导入连接', export: '导出连接', confirmImport: '导入将追加到现有连接列表，继续？',
+      importOk: '成功导入 {n} 个连接', importFail: '导入失败：文件格式不正确', exported: '已导出 {n} 个连接（不含密码）',
+      group: '分组', groupPlaceholder: '分组名称（留空=未分组）', ungrouped: '未分组', collapseAll: '全部折叠', expandAll: '全部展开',
+      pwdHint: '密码保存在本机凭证库，不写入浏览器存储', pwdEmpty: '留空则不修改已存密码', secretClearFail: '删除连接失败：密码未能从凭证库清除', pwdSaved: '密码已保存到本机凭证库', back: '返回',
       test: '测试连接', ok: '连接成功', fail: '连接失败',
       queries: '查询', newTab: '新建查询', closeTab: '关闭', db: '数据库',
       run: '执行 (⌘/Ctrl+Enter)', result: '结果', rows: '{n} 行', truncated: '仅显示前 {n} 行',
@@ -41,6 +45,10 @@ window.__ModuleLoader__.load({
       title: 'MySQL client', subtitle: 'Manage connections, open query tabs and run SQL.',
       connections: 'Connections', newConn: 'New connection', edit: 'Edit', del: 'Delete', save: 'Save', cancel: 'Cancel',
       name: 'Name', host: 'Host', port: 'Port', user: 'User', password: 'Password',
+      import: 'Import', export: 'Export', confirmImport: 'Import will append to existing connections. Continue?',
+      importOk: 'Imported {n} connections', importFail: 'Import failed: invalid file format', exported: 'Exported {n} connections (no passwords)',
+      group: 'Group', groupPlaceholder: 'Group name (blank = ungrouped)', ungrouped: 'Ungrouped', collapseAll: 'Collapse all', expandAll: 'Expand all',
+      pwdHint: 'Passwords live in the local credential store, not browser storage', pwdEmpty: 'Leave blank to keep the stored password', secretClearFail: 'Delete aborted: the stored password could not be cleared', pwdSaved: 'Password saved to the local credential store', back: 'Back',
       test: 'Test connection', ok: 'Connected', fail: 'Connection failed',
       queries: 'Queries', newTab: 'New query', closeTab: 'Close', db: 'Database',
       run: 'Run (⌘/Ctrl+Enter)', result: 'Result', rows: '{n} rows', truncated: 'Showing first {n} rows',
@@ -94,8 +102,11 @@ window.__ModuleLoader__.load({
       const [conns, setConns] = useState(() => readJSON(CONN_KEY, []))
       const [activeId, setActiveId] = useState(() => { try { return window.localStorage.getItem(ACTIVE_KEY) || '' } catch (_) { return '' } })
       const [editing, setEditing] = useState(null)
-      const [form, setForm] = useState({ name: '', host: '127.0.0.1', port: 3306, user: 'root', password: '' })
+      const [form, setForm] = useState({ name: '', host: '127.0.0.1', port: 3306, user: 'root', password: '', group: '' })
       const [ping, setPing] = useState('')
+      const [pingOk, setPingOk] = useState(false)
+      const fileRef = useRef(null)
+      const [collapsed, setCollapsed] = useState({})
       const [tabs, setTabs] = useState(() => readJSON(TABS_KEY, []))
       const [activeTab, setActiveTab] = useState('')
       const [databases, setDatabases] = useState([])
@@ -111,57 +122,171 @@ window.__ModuleLoader__.load({
 
       const active = useMemo(() => conns.find((c) => c.id === activeId) || null, [conns, activeId])
       const tab = useMemo(() => tabs.find((x) => x.id === activeTab) || null, [tabs, activeTab])
-      const connCfg = active ? { host: active.host, port: active.port, user: active.user, password: active.password } : null
+      // Group connections by their `group` field; empty group renders as "Ungrouped".
+      const grouped = useMemo(() => {
+        const map = new Map()
+        for (const c of conns) {
+          const g = (c.group || '').trim()
+          if (!map.has(g)) map.set(g, [])
+          map.get(g).push(c)
+        }
+        return Array.from(map.entries()).sort((a, b) => {
+          if (a[0] === '') return 1
+          if (b[0] === '') return -1
+          return a[0].localeCompare(b[0])
+        })
+      }, [conns])
+
+      const connCfg = active ? { id: active.id, host: active.host, port: active.port, user: active.user, hasPassword: Boolean(active.hasPassword) } : null
 
       useEffect(() => { writeJSON(CONN_KEY, conns) }, [conns])
       useEffect(() => { writeJSON(TABS_KEY, tabs) }, [tabs])
       useEffect(() => { try { window.localStorage.setItem(ACTIVE_KEY, activeId) } catch (_) {} }, [activeId])
 
+      // One-time migration: older versions kept the plaintext password in localStorage.
+      // Move any such value into the Host credential store, then drop it locally.
+      useEffect(() => {
+        let cancelled = false
+        ;(async () => {
+          const legacy = conns.filter((c) => typeof c.password === 'string' && c.password)
+          if (!legacy.length) return
+          for (const c of legacy) {
+            try { await api('/secret_set', { id: c.id, password: c.password }) } catch (_) { return }
+          }
+          if (cancelled) return
+          setConns((prev) => prev.map((c) => {
+            if (typeof c.password !== 'string' || !c.password) return c
+            const { password, ...rest } = c
+            return { ...rest, hasPassword: true }
+          }))
+        })()
+        return () => { cancelled = true }
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+      }, [])
+
       const patchTab = useCallback((id, patch) => setTabs((prev) => prev.map((x) => x.id === id ? { ...x, ...patch } : x)), [])
 
-      const saveConn = useCallback(() => {
+      const saveConn = useCallback(async () => {
+        const id = editing || makeId()
+        const password = form.password || ''
+        // Passwords never enter localStorage: they go to the Host credential store.
         const c = {
-          id: editing || makeId(),
+          id,
           name: form.name.trim() || (form.user + '@' + form.host),
           host: form.host.trim() || '127.0.0.1',
           port: Number(form.port) || 3306,
-          user: form.user.trim(), password: form.password || '',
+          user: form.user.trim(),
+          group: (form.group || '').trim(),
+          hasPassword: Boolean(password) || Boolean(editing && conns.find((x) => x.id === editing)?.hasPassword),
         }
+        // Store the password BEFORE selecting the connection: selecting it triggers the
+        // auto-load effect, which would otherwise query the server without a credential.
+        try {
+          if (password) await api('/secret_set', { id, password })
+          else if (editing) await api('/secret_set', { id, password: '' })
+        } catch (e) { setErr(e.message); return }
+
         setConns((prev) => editing ? prev.map((x) => x.id === editing ? c : x) : [...prev, c])
-        setActiveId(c.id)
+        setActiveId(id)
         setEditing(null)
-        setPing(''); setErr('')
-      }, [form, editing])
+        setPing(''); setPingOk(false); setErr('')
+      }, [form, editing, conns])
 
       const editConn = useCallback((c) => {
         setEditing(c.id)
-        setForm({ name: c.name, host: c.host, port: c.port, user: c.user, password: c.password || '' })
+        setForm({ name: c.name, host: c.host, port: c.port, user: c.user, password: '', group: c.group || '' })
       }, [])
 
-      const removeConn = useCallback((id) => {
+      const removeConn = useCallback(async (id) => {
         if (!window.confirm(t('confirmDel'))) return
+        // Clear the stored password first; a failure must abort so no secret is orphaned.
+        try {
+          await api('/secret_clear', { id })
+        } catch (e) {
+          setErr(t('secretClearFail') + (e.message ? ': ' + e.message : ''))
+          return
+        }
         setConns((prev) => prev.filter((c) => c.id !== id))
         if (activeId === id) { setActiveId(''); setPing(''); setDatabases([]); setTables([]) }
       }, [activeId])
 
       const testConn = useCallback(async () => {
         if (!connCfg) return
-        setBusy(true); setErr(''); setPing('')
+        setBusy(true); setErr(''); setPing(''); setPingOk(false)
         try {
           const d = await api('/test', { connection: connCfg })
+          setPingOk(Boolean(d.ok))
           setPing(d.ok ? t('ok') : t('fail'))
-        } catch (e) { setPing(t('fail')); setErr(e.message) }
-        finally { setBusy(false) }
+        } catch (e) {
+          setPingOk(false)
+          setPing(t('fail') + (e.message ? ': ' + e.message : ''))
+        } finally { setBusy(false) }
       }, [connCfg])
+
+      const exportConns = useCallback(() => {
+        const payload = {
+          app: 'dsh-mysql-client', version: 1,
+          exportedAt: new Date().toISOString(),
+          // Passwords are never exported: they only live in the Host credential store.
+          connections: conns.map(({ id, ...rest }) => ({ ...rest, password: '', hasPassword: Boolean(rest.hasPassword) })),
+        }
+        try {
+          const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json;charset=utf-8' })
+          const url = URL.createObjectURL(blob)
+          const a = document.createElement('a')
+          a.href = url; a.download = 'mysql-connections.json'
+          document.body.appendChild(a); a.click(); a.remove()
+          setTimeout(() => URL.revokeObjectURL(url), 1000)
+          setErr(fmt(t('exported'), { n: conns.length }))
+        } catch (e) { setErr(e.message) }
+      }, [conns])
+
+      const importConns = useCallback(async (e) => {
+        const file = e.target.files && e.target.files[0]
+        if (!file) return
+        try {
+          const text = await file.text()
+          const data = JSON.parse(text)
+          const list = Array.isArray(data) ? data : (data && Array.isArray(data.connections) ? data.connections : null)
+          if (!list) { setErr(t('importFail')); return }
+          const pending = []
+          const clean = list.filter((x) => x && x.host).map((x) => {
+            const id = makeId()
+            const pwd = typeof x.password === 'string' ? x.password : ''
+            if (pwd) pending.push({ id, password: pwd })
+            return {
+              id,
+              name: x.name || ((x.user || 'root') + '@' + x.host),
+              host: String(x.host),
+              port: Number(x.port) || 3306,
+              user: x.user || 'root',
+              group: (x.group || '').trim(),
+              hasPassword: Boolean(pwd) || Boolean(x.hasPassword),
+            }
+          })
+          if (!clean.length) { setErr(t('importFail')); return }
+          if (!window.confirm(t('confirmImport'))) return
+          // Move any passwords carried by the file into the Host credential store.
+          for (const item of pending) {
+            try { await api('/secret_set', item) } catch (_) {}
+          }
+          setConns((prev) => [...prev, ...clean])
+          setActiveId(clean[0].id)
+          setErr(fmt(t('importOk'), { n: clean.length }))
+        } catch (_) { setErr(t('importFail')) }
+        e.target.value = ''
+      }, [])
 
       const loadDatabases = useCallback(async (cfgOverride) => {
         const cfg = cfgOverride || connCfg
         if (!cfg) return
-        setBusy(true); setErr('')
+        const silent = Boolean(cfg && cfg.silent)
+        const payload = { id: cfg.id, host: cfg.host, port: cfg.port, user: cfg.user, hasPassword: cfg.hasPassword }
+        setBusy(true); if (!silent) setErr('')
         try {
-          const d = await api('/databases', { connection: cfg })
+          const d = await api('/databases', { connection: payload })
           setDatabases(d.databases || [])
-        } catch (e) { setErr(e.message) }
+        } catch (e) { if (!silent) setErr(e.message) }
         finally { setBusy(false) }
       }, [connCfg])
 
@@ -169,7 +294,10 @@ window.__ModuleLoader__.load({
       const autoDbKey = activeId + '|' + (active ? active.host + ':' + active.port + ':' + active.user : '')
       useEffect(() => {
         if (!active) { setDatabases([]); setTables([]); return }
-        loadDatabases({ host: active.host, port: active.port, user: active.user, password: active.password })
+        // Silent on failure: this runs implicitly on selection, so surfacing an error
+        // banner here (e.g. a brand-new connection) would be noise. The explicit
+        // "Databases" button reports failures instead.
+        loadDatabases({ id: active.id, host: active.host, port: active.port, user: active.user, silent: true })
         // eslint-disable-next-line react-hooks/exhaustive-deps
       }, [autoDbKey])
 
@@ -392,29 +520,65 @@ window.__ModuleLoader__.load({
               h('div', { className: 'dshMy-connList' },
                 conns.length === 0
                   ? h('div', { className: 'dshMy-note' }, t('noConn'))
-                  : conns.map((c) =>
-                      h('div', {
-                        key: c.id,
-                        className: 'dshMy-conn' + (activeId === c.id ? ' dshMy-connOn' : ''),
-                        onClick: () => { setActiveId(c.id); setPing(''); setDatabases([]); setTables([]) },
-                      },
-                        h('span', { className: 'dshMy-name' }, c.name),
-                        h('span', { className: 'dshMy-addr' }, `${c.user}@${c.host}:${c.port}`),
-                        h('button', { type: 'button', className: 'dshMy-mini', onClick: (e) => { e.stopPropagation(); editConn(c) } }, t('edit')),
-                        h('button', { type: 'button', className: 'dshMy-mini dshMy-del', onClick: (e) => { e.stopPropagation(); removeConn(c.id) } }, '×')
+                  : grouped.map(([groupName, list]) => {
+                      const gkey = groupName || '__ungrouped__'
+                      const isCollapsed = Boolean(collapsed[gkey])
+                      return h('div', { key: gkey, className: 'dshMy-group' },
+                        h('div', {
+                          className: 'dshMy-groupHead',
+                          onClick: () => setCollapsed((prev) => ({ ...prev, [gkey]: !prev[gkey] })),
+                        },
+                          h('span', { className: 'dshMy-groupArrow' }, isCollapsed ? '▸' : '▾'),
+                          h('span', { className: 'dshMy-groupName' },
+                            (groupName || t('ungrouped')),
+                            h('span', { className: 'dshMy-groupCount' }, ' (' + list.length + ')')
+                          )
+                        ),
+                        isCollapsed ? null : list.map((c) =>
+                          h('div', {
+                            key: c.id,
+                            className: 'dshMy-conn' + (activeId === c.id ? ' dshMy-connOn' : ''),
+                            onClick: () => { setActiveId(c.id); setPing(''); setPingOk(false); setDatabases([]); setTables([]) },
+                          },
+                            h('span', { className: 'dshMy-name' }, c.name),
+                            h('span', { className: 'dshMy-addr' }, `${c.user}@${c.host}:${c.port}`),
+                            c.hasPassword ? h('span', { className: 'dshMy-lock', title: t('pwdSaved') }, '🔒') : null,
+                            h('button', { type: 'button', className: 'dshMy-mini', onClick: (e) => { e.stopPropagation(); editConn(c) } }, t('edit')),
+                            h('button', { type: 'button', className: 'dshMy-mini dshMy-del', onClick: (e) => { e.stopPropagation(); removeConn(c.id) } }, '×')
+                          )
+                        )
                       )
-                    )
+                    })
               ),
-              h('button', { type: 'button', className: 'dshMy-btn dshMy-btnPrimary', onClick: () => { setEditing(null); setForm({ name: '', host: '127.0.0.1', port: 3306, user: 'root', password: '' }) } }, '+ ' + t('newConn')),
-              active ? h('button', { type: 'button', className: 'dshMy-btn', disabled: busy, onClick: testConn }, t('test')) : null,
-              active ? h('button', { type: 'button', className: 'dshMy-btn', disabled: busy, onClick: () => loadDatabases() }, t('databases')) : null,
-              ping ? h('div', { className: 'dshMy-note' }, ping) : null
+              h('div', { className: 'dshMy-btnRow' },
+                h('button', { type: 'button', className: 'dshMy-btn dshMy-btnPrimary', onClick: () => { setEditing(null); setForm({ name: '', host: '127.0.0.1', port: 3306, user: 'root', password: '', group: '' }) } }, '+ ' + t('newConn')),
+                h('button', { type: 'button', className: 'dshMy-btn', disabled: !active || busy, onClick: testConn }, t('test'))
+              ),
+              h('div', { className: 'dshMy-btnRow' },
+                h('button', { type: 'button', className: 'dshMy-btn', title: t('export'), onClick: exportConns }, t('export')),
+                h('button', { type: 'button', className: 'dshMy-btn', title: t('import'), onClick: () => fileRef.current && fileRef.current.click() }, t('import'))
+              ),
+              h('input', { ref: fileRef, type: 'file', accept: '.json,application/json', style: { display: 'none' }, onChange: importConns }),
+              active ? h('button', { type: 'button', className: 'dshMy-btn dshMy-btnWide', disabled: busy, onClick: () => loadDatabases() }, t('databases')) : null,
+              ping ? h('div', { className: 'dshMy-ping ' + (pingOk ? 'dshMy-pingOk' : 'dshMy-pingFail') }, ping) : null
             ),
             h('div', { className: 'dshMy-card' },
               h('div', { className: 'dshMy-cardTitle' }, editing ? t('edit') : t('newConn')),
               h('div', { className: 'dshMy-form' },
                 formRow('name', 'name'), formRow('host', 'host'),
                 formRow('port', 'port', 'number'), formRow('user', 'user'), formRow('password', 'password', 'password'),
+                h('label', { className: 'dshMy-field' },
+                  h('span', null, t('group')),
+                  h('input', {
+                    className: 'dshMy-input', list: 'dshMy-groupOptions', value: form.group || '',
+                    placeholder: t('groupPlaceholder'),
+                    onChange: (e) => setForm((f) => ({ ...f, group: e.target.value })),
+                  }),
+                  h('datalist', { id: 'dshMy-groupOptions' },
+                    Array.from(new Set(conns.map((c) => (c.group || '').trim()).filter(Boolean))).map((g) => h('option', { key: g, value: g }))
+                  )
+                ),
+                h('div', { className: 'dshMy-note' }, editing ? t('pwdEmpty') : t('pwdHint')),
                 h('button', { type: 'button', className: 'dshMy-btn dshMy-btnPrimary', onClick: saveConn }, t('save'))
               )
             ),
@@ -592,7 +756,20 @@ window.__ModuleLoader__.load({
 .dshMy-btn:disabled{opacity:.45;cursor:not-allowed}
 .dshMy-btnPrimary{background:#e48b2b;color:#fff;border-color:transparent;font-weight:600}
 .dshMy-del{color:var(--dsw-alias-state-error-primary)}
-.dshMy-connList{display:flex;flex-direction:column;gap:4px}
+.dshMy-connList{display:flex;flex-direction:column;gap:6px}
+.dshMy-group{display:flex;flex-direction:column;gap:4px}
+.dshMy-groupHead{display:flex;align-items:center;gap:6px;padding:4px 6px;border-radius:6px;background:var(--dsw-alias-bg-layer-2);cursor:pointer;font-size:11px;font-weight:600;color:var(--dsw-alias-label-secondary)}
+.dshMy-groupHead:hover{color:var(--dsw-alias-label-primary)}
+.dshMy-groupArrow{width:10px;flex:0 0 auto}
+.dshMy-groupName{flex:1 1 auto;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.dshMy-groupCount{font-weight:500;font-size:10px;opacity:.65;margin-left:1px}
+.dshMy-btnRow{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.dshMy-btnRow .dshMy-btn{width:100%}
+.dshMy-btnWide{width:100%}
+.dshMy-ping{font-size:11px;line-height:1.5;font-weight:600;padding:4px 0}
+.dshMy-pingOk{color:#2e7d32}
+.dshMy-pingFail{color:var(--dsw-alias-state-error-primary)}
+.dshMy-lock{font-size:10px;margin-left:2px}
 .dshMy-conn{display:flex;align-items:center;gap:6px;padding:7px 8px;border-radius:7px;border:1px solid var(--dsw-alias-border-l1);cursor:pointer;font-size:12px;flex-wrap:wrap}
 .dshMy-connOn{border-color:#e48b2b;background:var(--dsw-alias-bg-layer-2)}
 .dshMy-name{font-weight:600;flex:1 1 auto}

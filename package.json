@@ -1,6 +1,6 @@
 {
   "name": "@oakzhong/dsh-mysql-client",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "private": false,
   "publishConfig": {
     "access": "public"
@@ -19,6 +19,7 @@
     "cordis.patch.yml",
     "locale/*.json",
     "icon.svg",
+    "icon.png",
     "README.md",
     "README.zh.md"
   ],
@@ -33,5 +34,9 @@
         "@deepseek-ai/dsh-client-locale"
       ]
     }
+  },
+  "dependencies": {
+    "mysql2": "^3.24.6",
+    "@types/node": "^22.0.0"
   }
 }

@@ -2,14 +2,14 @@
 
 A MySQL client plugin for DeepSeek Harness (DSH). It adds a **MySQL Client** entry to the left sidebar, where you can manage connections, open multiple query tabs, run SQL statements, inspect and edit table structures and indexes, and export results — all from inside the Harness Web UI.
 
-SQL execution runs on the Host through the local `mysql` CLI. Connection details are sent per request from the Client and are never persisted on the Host; on the Client they are kept in `localStorage`.
+SQL execution runs on the Host through the pure-JavaScript `mysql2` driver, so **no local `mysql` CLI is required**. Connection details are sent per request from the Client and are never persisted on the Host.
 
 ## Plugin Info
 
 | Field | Value |
 | --- | --- |
 | Package | `@oakzhong/dsh-mysql-client` |
-| Version | `1.0.0` |
+| Version | `1.1.0` |
 | Entry | `index.js` (Host) · `client.js` (Client) |
 | Type | DSH bundle plugin, ES module (`"type": "module"`, private) |
 | Description | A MySQL client with connection management, query tabs and SQL execution. |
@@ -20,7 +20,7 @@ SQL execution runs on the Host through the local `mysql` CLI. Connection details
 | --- | --- | --- |
 | Client UI | React (via `window.__ModuleLoader__`) | Sidebar entry and the main React panel. |
 | Host runtime | Node.js `child_process.execFile` | Runs the `mysql` CLI for every operation. |
-| Database engine | `mysql` CLI (path via `MYSQL_CLI_PATH`, default `/usr/local/mysql/bin/mysql`) | Executes SQL and returns tabular output. |
+| Database engine | `mysql2` (pure-JavaScript driver, no `mysql` CLI needed) | One pooled connection per host/port/user; results come back as structured rows and fields. |
 | Plugin framework | Cordis (`slots`, `locale`, `connection`) | UI injection, i18n dictionaries and HTTP routes. |
 | Client storage | `window.localStorage` | Persists connections, active selection and query tabs. |
 | Module format | ES Modules | Package entry points declared in `exports`. |
@@ -30,7 +30,11 @@ SQL execution runs on the Host through the local `mysql` CLI. Connection details
 ### Connection Management
 - Create, edit and delete saved connections (`name`, `host`, `port`, `user`, `password`).
 - Test a connection with `SELECT 1`; refresh the database list (`SHOW DATABASES`).
+- **Grouping**: connections are listed under collapsible group headers (count per group); a blank group renders as "Ungrouped"; existing group names are offered for reuse
+- **Export / Import**: download connections as JSON (and **passwords are excluded by default**); importing appends entries with regenerated ids and moves any carried password into the credential store
+- **Test result** is shown inline — **green for success, red for failure**
 - Connections and the active selection are stored in `localStorage` on the Client only.
+- **Password storage**: passwords are kept in the DSH credential store (`$DSH_HOME/.credentials.yaml`), never in browser `localStorage`; deleting a connection also deletes its password.
 
 ### Query Tabs & SQL Execution
 - Open and close multiple query tabs; each tab keeps its own SQL, database selection and result.
@@ -52,13 +56,13 @@ SQL execution runs on the Host through the local `mysql` CLI. Connection details
 - Export the current result as SQL `INSERT` statements (**Export SQL**).
 
 ### Host API
-Registered under `/api/dsh-mysql-client` via the `connection` service: `test`, `databases`, `tables`, `describe`, `indexes`, `query`. SQL is passed to the CLI as a single `-e` argument and is never interpreted by a shell.
+Registered under `/api/dsh-mysql-client` via the `connection` service: `test`, `databases`, `tables`, `describe`, `indexes`, `query`. The driver sends statements over the wire; the client sends text and the Host executes it on a pooled connection.
 
 ## Directory Structure
 
 ```
 dsh-mysql-client/
-├── index.js              # Host half: mysql CLI routes
+├── index.js              # Host half: routes over mysql2 (no mysql CLI needed)
 ├── client.js             # Client half: sidebar entry + React panel and styles
 ├── cordis.patch.yml      # DSH bundle patch
 ├── icon.svg              # Plugin icon
@@ -73,7 +77,7 @@ dsh-mysql-client/
 ## Installation & Usage
 
 1. Install this bundle plugin into the target DSH profile and reload the Harness Web UI. It is marked to mount immediately.
-2. Make sure the `mysql` CLI is available on the Host. The default path is `/usr/local/mysql/bin/mysql`; set the `MYSQL_CLI_PATH` environment variable to override it.
+2. No `mysql` CLI is required — the plugin bundles the `mysql2` driver. The target MySQL server must be reachable over the network.
 3. Open the **MySQL Client** entry in the left sidebar.
 4. Create a connection (host, port, user, password), then click **Test connection**.
 5. Refresh databases, click **New query**, choose a database, write SQL and press **⌘/Ctrl+Enter** to run it.

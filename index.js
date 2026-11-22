@@ -1,21 +1,19 @@
 /**
  * Host half of the MySQL client bundle.
  *
- * Runs the mysql CLI via child_process for each operation. Connection details
- * come per request from the Client; nothing is persisted on the Host. SQL is
- * passed as a single argv value to `-e` so it is never interpreted by a shell.
+ * Talks to MySQL over the wire with the pure-JavaScript `mysql2` driver, so no
+ * local `mysql` CLI is required. Connection details come per request from the
+ * Client; passwords never enter the browser (they live in the DSH credential store).
  */
-import { execFile } from 'node:child_process'
-import { promisify } from 'node:util'
+import mysql from 'mysql2/promise'
 
 export const name = 'dsh-mysql-client'
-export const inject = ['connection']
+export const inject = ['connection', 'credentials']
 
-const execFileAsync = promisify(execFile)
 const API = '/api/dsh-mysql-client'
-const CLI = process.env.MYSQL_CLI_PATH || '/usr/local/mysql/bin/mysql'
-const TIMEOUT = 15000
+const CONNECT_TIMEOUT = 10000
 const MAX_ROWS = 500
+const MAX_LIVE_POOLS = 6
 
 class SqlError extends Error {
   constructor(message, status = 400) { super(message); this.status = status }
@@ -24,7 +22,11 @@ function json(value, status = 200) {
   return Response.json(value, { status, headers: { 'cache-control': 'no-store' } })
 }
 function failure(error, fallback) {
-  const message = error instanceof SqlError ? error.message : fallback
+  if (!(error instanceof SqlError)) {
+    const translated = translateError(error)
+    if (translated) return json({ error: translated.message }, translated.status)
+  }
+  const message = error instanceof SqlError ? error.message : (error && error.message) || fallback
   const status = error instanceof SqlError ? error.status : 500
   return json({ error: message }, status)
 }
@@ -35,54 +37,138 @@ async function readBody(request) {
   try { return JSON.parse((await request.text()) || '{}') }
   catch (_) { throw new SqlError('请求内容不是合法的 JSON。') }
 }
-function connArgs(cfg) {
-  const args = []
-  if (cfg.host) args.push('-h', String(cfg.host))
-  if (cfg.port) args.push('-P', String(cfg.port))
-  if (cfg.user) args.push('-u', String(cfg.user))
-  if (cfg.password) args.push('-p' + String(cfg.password)) // mysql requires -ppass (no space)
-  return args
+
+// MySQLError carries a `code` such as ER_ACCESS_DENIED_ERROR.
+function translateError(error) {
+  const code = (error && error.code) || ''
+  const msg = (error && error.message) || ''
+  if (/ECONNREFUSED/i.test(code + msg)) return { message: '连接被拒绝，请检查主机与端口。', status: 502 }
+  if (/ENOTFOUND|EAI_AGAIN/i.test(code + msg)) return { message: '无法解析主机地址。', status: 502 }
+  if (/ETIMEDOUT|PROTOCOL_SEQUENCE_TIMEOUT/i.test(code + msg)) return { message: '连接或查询超时。', status: 504 }
+  if (code === 'ER_ACCESS_DENIED_ERROR') return { message: '用户名或密码错误。', status: 401 }
+  if (code === 'ER_BAD_DB_ERROR') return { message: '数据库不存在。', status: 404 }
+  if (code === 'ER_NO_SUCH_TABLE') return { message: '数据表不存在。', status: 404 }
+  if (code === 'ER_PARSE_ERROR') return { message: 'SQL 语法错误：' + String(msg).replace(/^You have an error in your SQL syntax;\s*/i, ''), status: 400 }
+  return null
 }
-// mysql prints an unavoidable warning to stderr when a password is supplied
-// on the CLI; strip these noise lines so they never surface as errors/messages.
-function cleanWarning(text) {
-  return String(text == null ? '' : text)
-    .split('\n')
-    .filter((line) => !/Using a password on the command line interface can be insecure/i.test(line))
-    .join('\n')
-    .trim()
+
+// Credential reference for one connection (DSH refs are env-var-like identifiers).
+function refOf(connId) {
+  const safe = String(connId || '').replace(/[^A-Za-z0-9]/g, '_')
+  return 'MYSQL_CONN_' + (safe || 'DEFAULT').toUpperCase()
 }
-// Run SQL via mysql --batch --raw -e "<sql>". Returns stdout text.
-async function runSql(cfg, database, sql) {
-  const args = [...connArgs(cfg), '--batch', '--raw']
-  if (database) args.push(String(database))
-  args.push('-e', String(sql))
+async function getStoredPassword(ctx, connId) {
+  if (!connId) return ''
   try {
-    const { stdout, stderr } = await execFileAsync(CLI, args, { timeout: TIMEOUT, maxBuffer: 16 * 1024 * 1024 })
-    return { out: stdout, err: cleanWarning(stderr) }
+    const resolved = await ctx.credentials.resolve(refOf(connId))
+    // resolve() returns { value, source }, not a bare string.
+    if (resolved && typeof resolved === 'object' && typeof resolved.value === 'string') return resolved.value
+    if (typeof resolved === 'string') return resolved
+    return ''
+  } catch (_) { return '' }
+}
+async function withStoredPassword(ctx, cfg) {
+  const merged = { ...cfg }
+  if (!merged.password && merged.id) {
+    const stored = await getStoredPassword(ctx, merged.id)
+    if (stored) merged.password = stored
+    // No password stored for this connection: surface it directly instead of
+    // letting the server report a confusing access-denied error.
+    else if (merged.hasPassword) throw new SqlError('该连接的密码未保存，请重新编辑连接并填写密码。', 401)
+  }
+  return merged
+}
+
+// --- pool --------------------------------------------------------------------
+// One mysql2 pool per host:port:user, reused across requests.
+const pools = new Map()
+// The key must include the credential identity: otherwise a pool created with a
+// wrong password is reused for later requests that supply the right one.
+function poolKey(cfg) {
+  const pw = String(cfg.password == null ? '' : cfg.password)
+  let tag = 'noauth'
+  if (pw) {
+    let hash = 0
+    for (let i = 0; i < pw.length; i += 1) hash = ((hash << 5) - hash + pw.charCodeAt(i)) | 0
+    tag = 'pw' + (hash >>> 0).toString(36)
+  }
+  return [cfg.host || '127.0.0.1', Number(cfg.port) || 3306, cfg.user || 'root', tag].join('|')
+}
+function createPool(cfg) {
+  return mysql.createPool({
+    host: cfg.host || '127.0.0.1',
+    port: Number(cfg.port) || 3306,
+    user: cfg.user || 'root',
+    password: cfg.password === undefined ? '' : String(cfg.password),
+    waitForConnections: true,
+    connectionLimit: 3,
+    maxIdle: 3,
+    idleTimeout: 60000,
+    connectTimeout: CONNECT_TIMEOUT,
+    multipleStatements: true,
+    dateStrings: true,
+    supportBigNumbers: true,
+  })
+}
+function getPool(cfg) {
+  const key = poolKey(cfg)
+  const existing = pools.get(key)
+  if (existing) return existing
+  const pool = createPool(cfg)
+  pools.set(key, pool)
+  if (pools.size > MAX_LIVE_POOLS) {
+    for (const [k, p] of pools) {
+      if (pools.size <= MAX_LIVE_POOLS) break
+      if (k === key) continue
+      try { p.end().catch(() => {}) } catch (_) {}
+      pools.delete(k)
+    }
+  }
+  return pool
+}
+// Run one statement against an optional database, returning [rows, fields].
+// A dedicated connection is taken from the pool so that a failed statement can be
+// destroyed instead of returned, which would otherwise poison the pool.
+async function runQuery(cfg, database, sql) {
+  const pool = getPool(cfg)
+  let conn
+  try {
+    conn = await pool.getConnection()
+    if (database) {
+      await conn.query('USE `' + String(database).replace(/`/g, '``') + '`')
+    }
+    const [rows, fields] = await conn.query(sql)
+    conn.release()
+    return { rows, fields }
   } catch (error) {
-    const msg = (error && error.message) || String(error)
-    if (msg.includes('ENOENT')) throw new SqlError('找不到 mysql 客户端，请确认路径。', 500)
-    if (msg.includes('timed out') || msg.includes('ETIMEDOUT')) throw new SqlError('查询超时。', 504)
-    const detail = (error && error.stderr) ? cleanWarning(error.stderr) : msg
-    throw new SqlError(detail || 'SQL 执行失败。')
+    // Destroy instead of release: a connection left in a bad state (failed USE,
+    // aborted query, dropped socket) must not go back into the pool.
+    if (conn && typeof conn.destroy === 'function') { try { conn.destroy() } catch (_) {} }
+    const t = translateError(error)
+    if (t) throw new SqlError(t.message, t.status)
+    throw new SqlError((error && error.message) || 'SQL 执行失败。')
   }
 }
-// Parse mysql --batch output (tab-separated, first line = headers).
-function parseTable(text) {
-  const lines = String(text || '').replace(/\r/g, '').split('\n').filter((l, i, arr) => !(i === arr.length - 1 && l === ''))
-  if (!lines.length) return { columns: [], rows: [], truncated: false, message: '' }
-  // A single line without tabs is a status message (e.g. "Query OK, 1 row affected").
-  // Anything with multiple lines is a result set — even a single-column one
-  // such as SHOW DATABASES / SHOW TABLES, whose lines contain no tabs.
-  const hasTab = lines[0].includes('\t')
-  if (lines.length === 1 && !hasTab) return { columns: [], rows: [], truncated: false, message: lines[0] }
-  const split = (l) => l.split('\t').map((v) => v === 'NULL' ? null : v)
-  const columns = split(lines[0])
-  const all = lines.slice(1).map(split)
-  const truncated = all.length > MAX_ROWS
-  const rows = truncated ? all.slice(0, MAX_ROWS) : all
-  return { columns, rows, truncated, message: '' }
+
+function toCell(value) {
+  if (value === null || value === undefined) return null
+  if (Buffer.isBuffer(value)) return value.toString('utf8')
+  if (value instanceof Date) return value.toISOString()
+  if (typeof value === 'object') return JSON.stringify(value)
+  return value
+}
+// Normalise driver output into the {columns, rows} shape the Client expects.
+function toTable(rows, fields) {
+  if (!Array.isArray(rows)) {
+    // DML/DDL: an OkPacket.
+    const affected = rows && rows.affectedRows != null ? rows.affectedRows : null
+    return { columns: [], rows: [], truncated: false, message: affected != null ? `影响 ${affected} 行` : '执行成功', affectedRows: affected }
+  }
+  const columns = Array.isArray(fields) ? fields.map((f) => f.name) : (rows[0] ? Object.keys(rows[0]) : [])
+  const truncated = rows.length > MAX_ROWS
+  const slice = truncated ? rows.slice(0, MAX_ROWS) : rows
+  const matrix = slice.map((row) => (Array.isArray(row) ? row.map(toCell) : columns.map((c) => toCell(row[c]))))
+  return { columns, rows: matrix, truncated, message: truncated ? `结果超过 ${MAX_ROWS} 行，已截断` : '', affectedRows: null }
 }
 
 export function apply(ctx) {
@@ -97,13 +183,14 @@ export function apply(ctx) {
       }
     }
 
-    // Test connection with SELECT 1.
+    // Test connection.
     register(route('test', ['POST'], async (request) => {
       try {
         const body = await readBody(request)
-        const { out } = await runSql(body.connection || '', '', 'SELECT 1 AS ok')
-        const t = parseTable(out)
-        return json({ ok: t.rows.length > 0 && t.rows[0][0] === '1', columns: t.columns, rows: t.rows })
+        const cfg = await withStoredPassword(ctx, body.connection || {})
+        const { rows } = await runQuery(cfg, '', 'SELECT 1 AS ok')
+        const t = toTable(rows, null)
+        return json({ ok: Boolean(t.rows.length && Number(t.rows[0][0]) === 1), columns: t.columns, rows: t.rows })
       } catch (error) { return failure(error, '连接测试失败。') }
     }))
 
@@ -111,8 +198,9 @@ export function apply(ctx) {
     register(route('databases', ['POST'], async (request) => {
       try {
         const body = await readBody(request)
-        const { out } = await runSql(body.connection || '', '', 'SHOW DATABASES')
-        const t = parseTable(out)
+        const cfg = await withStoredPassword(ctx, body.connection || {})
+        const { rows, fields } = await runQuery(cfg, '', 'SHOW DATABASES')
+        const t = toTable(rows, fields)
         const databases = t.rows.map((r) => r[0]).filter(Boolean)
         return json({ databases })
       } catch (error) { return failure(error, '无法读取数据库列表。') }
@@ -124,8 +212,9 @@ export function apply(ctx) {
         const body = await readBody(request)
         const db = body.database
         if (typeof db !== 'string' || !db) throw new SqlError('缺少数据库名。')
-        const { out } = await runSql(body.connection || '', db, 'SHOW TABLES')
-        const t = parseTable(out)
+        const cfg = await withStoredPassword(ctx, body.connection || {})
+        const { rows, fields } = await runQuery(cfg, db, 'SHOW TABLES')
+        const t = toTable(rows, fields)
         return json({ tables: t.rows.map((r) => r[0]).filter(Boolean) })
       } catch (error) { return failure(error, '无法读取数据表。') }
     }))
@@ -138,20 +227,24 @@ export function apply(ctx) {
         const table = body.table
         if (typeof db !== 'string' || !db) throw new SqlError('缺少数据库名。')
         if (typeof table !== 'string' || !table) throw new SqlError('缺少表名。')
+        const cfg = await withStoredPassword(ctx, body.connection || {})
         const safeDb = '`' + db.replace(/`/g, '``') + '`'
         const safeTable = '`' + table.replace(/`/g, '``') + '`'
-        const { out } = await runSql(body.connection || '', db, 'DESCRIBE ' + safeDb + '.' + safeTable)
-        const t = parseTable(out)
-        // DESCRIBE columns: Field, Type, Null, Key, Default, Extra
-        const columns = t.rows.map((r) => ({
-          field: r[0] || '', type: r[1] || '', nullable: r[2] || '',
-          key: r[3] || '', default: r[4] == null ? '' : String(r[4]), extra: r[5] || '',
+        const { rows } = await runQuery(cfg, db, 'SHOW FULL COLUMNS FROM ' + safeDb + '.' + safeTable)
+        const columns = rows.map((r) => ({
+          field: r.Field || '',
+          type: r.Type || '',
+          nullable: r.Null || '',
+          key: r.Key || '',
+          default: r.Default == null ? '' : String(r.Default),
+          extra: r.Extra || '',
+          comment: r.Comment || '',
         }))
         return json({ columns })
       } catch (error) { return failure(error, '无法读取表结构。') }
     }))
 
-    // List indexes of a table: SHOW INDEX (one row per indexed column).
+    // List indexes of a table.
     register(route('indexes', ['POST'], async (request) => {
       try {
         const body = await readBody(request)
@@ -159,24 +252,32 @@ export function apply(ctx) {
         const table = body.table
         if (typeof db !== 'string' || !db) throw new SqlError('缺少数据库名。')
         if (typeof table !== 'string' || !table) throw new SqlError('缺少表名。')
+        const cfg = await withStoredPassword(ctx, body.connection || {})
         const safeDb = '`' + db.replace(/`/g, '``') + '`'
         const safeTable = '`' + table.replace(/`/g, '``') + '`'
-        const { out } = await runSql(body.connection || '', db, 'SHOW INDEX FROM ' + safeDb + '.' + safeTable)
-        const t = parseTable(out)
-        // SHOW INDEX columns: Table, Non_unique, Key_name, Seq_in_index,
-        // Column_name, Collation, Cardinality, Sub_part, Packed, Null, Index_type, Comment, Index_comment
+        const { rows } = await runQuery(cfg, db, 'SHOW INDEX FROM ' + safeDb + '.' + safeTable)
         const map = {}
-        for (const r of t.rows) {
-          const name = r[2] || ''
+        for (const r of rows) {
+          const name = r.Key_name || ''
           if (!name) continue
-          if (!map[name]) map[name] = {
-            name, unique: String(r[1]) === '0', type: r[10] || 'BTREE',
-            columns: [], comment: r[12] || '',
+          if (!map[name]) {
+            map[name] = {
+              name,
+              unique: Number(r.Non_unique) === 0,
+              type: r.Index_type || 'BTREE',
+              columns: [],
+              comment: r.Index_comment || '',
+            }
           }
-          map[name].columns.push({ seq: Number(r[3]) || 0, column: r[4] || '', subPart: r[7] || '' })
+          map[name].columns.push({
+            seq: Number(r.Seq_in_index) || 0,
+            column: r.Column_name || '',
+            subPart: r.Sub_part == null ? '' : String(r.Sub_part),
+          })
         }
         const indexes = Object.values(map).map((ix) => ({
-          ...ix, columns: ix.columns.sort((a, b) => a.seq - b.seq).map((c) => c.column),
+          ...ix,
+          columns: ix.columns.sort((a, b) => a.seq - b.seq).map((c) => c.column),
         }))
         return json({ indexes })
       } catch (error) { return failure(error, '无法读取索引。') }
@@ -188,17 +289,65 @@ export function apply(ctx) {
         const body = await readBody(request)
         const sql = typeof body.sql === 'string' ? body.sql.trim() : ''
         if (!sql) throw new SqlError('请输入 SQL。')
-        const { out, err } = await runSql(body.connection || '', body.database || '', sql)
-        const table = parseTable(out)
+        const cfg = await withStoredPassword(ctx, body.connection || {})
+        const { rows, fields } = await runQuery(cfg, body.database || '', sql)
+        const table = toTable(rows, fields)
         return json({
-          columns: table.columns, rows: table.rows, truncated: table.truncated,
-          message: table.message || (err ? String(err).trim() : '') || '执行成功',
-          affectedRows: null,
+          columns: table.columns,
+          rows: table.rows,
+          truncated: table.truncated,
+          message: table.message || '执行成功',
+          affectedRows: table.affectedRows,
         })
       } catch (error) { return failure(error, 'SQL 执行失败。') }
     }))
 
+    // --- connection secrets: passwords live in DSH credentials, never in the browser ---
+    register(route('secret_set', ['POST'], async (request) => {
+      try {
+        const body = await readBody(request)
+        const id = typeof body.id === 'string' ? body.id.trim() : ''
+        const password = typeof body.password === 'string' ? body.password : ''
+        if (!id) throw new SqlError('缺少连接标识。')
+        if (!password) {
+          await ctx.credentials.unset(refOf(id))
+          if (await getStoredPassword(ctx, id)) throw new SqlError('清空密码失败，请重试。', 500)
+          return json({ ok: true, stored: false })
+        }
+        await ctx.credentials.set(refOf(id), password)
+        return json({ ok: true, stored: true })
+      } catch (error) { return failure(error, '保存密码失败。') }
+    }))
+
+    register(route('secret_clear', ['POST'], async (request) => {
+      try {
+        const body = await readBody(request)
+        const id = typeof body.id === 'string' ? body.id.trim() : ''
+        if (!id) throw new SqlError('缺少连接标识。')
+        await ctx.credentials.unset(refOf(id))
+        if (await getStoredPassword(ctx, id)) throw new SqlError('密码未能从凭证库删除，请重试。', 500)
+        return json({ ok: true, cleared: true })
+      } catch (error) { return failure(error, '删除密码失败。') }
+    }))
+
+    register(route('secret_has', ['POST'], async (request) => {
+      try {
+        const body = await readBody(request)
+        const ids = Array.isArray(body.ids) ? body.ids.map((x) => String(x)) : []
+        const result = {}
+        for (const id of ids) {
+          if (!id) continue
+          result[id] = Boolean(await getStoredPassword(ctx, id))
+        }
+        return json({ result })
+      } catch (error) { return failure(error, '查询密码状态失败。') }
+    }))
+
     return () => {
+      for (const pool of pools.values()) {
+        try { pool.end().catch(() => {}) } catch (_) {}
+      }
+      pools.clear()
       for (const dispose of disposers) {
         try {
           const result = dispose()

@@ -9,7 +9,7 @@ SQL 执行在 Host 端通过纯 JavaScript 的 `mysql2` 驱动直连 MySQL 完�
 | 字段 | 值 |
 | --- | --- |
 | 包名 | `@oakzhong/dsh-mysql-client` |
-| 版本 | `1.1.0` |
+| 版本 | `1.1.1` |
 | 入口 | `index.js`（Host）· `client.js`（Client） |
 | 类型 | DSH bundle 插件，ES module（`"type": "module"`，private） |
 | 描述 | A MySQL client with connection management, query tabs and SQL execution. |

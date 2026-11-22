@@ -1,0 +1,6 @@
+{
+  "meta": {
+    "title": "MySQL 客户端",
+    "description": "在左侧栏管理 MySQL 连接，新增查询页面并执行 SQL 语句。"
+  }
+}

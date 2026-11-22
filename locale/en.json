@@ -1,0 +1,6 @@
+{
+  "meta": {
+    "title": "MySQL client",
+    "description": "Manage MySQL connections, open query tabs and run SQL from the left sidebar."
+  }
+}

@@ -1,0 +1,4 @@
+# MySQL client bundle: the Host half runs the mysql CLI; `dsh.client` renders the UI.
+- insert:
+    - id: dsh-mysql-client
+      name: '@oakzhong/dsh-mysql-client'

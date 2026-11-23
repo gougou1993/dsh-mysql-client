@@ -25,8 +25,29 @@ window.__ModuleLoader__.load({
       importOk: '成功导入 {n} 个连接', importFail: '导入失败：文件格式不正确', exported: '已导出 {n} 个连接（不含密码）',
       group: '分组', groupPlaceholder: '分组名称（留空=未分组）', ungrouped: '未分组', collapseAll: '全部折叠', expandAll: '全部展开',
       pwdHint: '密码保存在本机凭证库，不写入浏览器存储', pwdEmpty: '留空则不修改已存密码', secretClearFail: '删除连接失败：密码未能从凭证库清除', pwdSaved: '密码已保存到本机凭证库', back: '返回',
+      serverInfo: '服务器信息', infoFail: '读取服务器信息失败', infoClose: '收起信息',
+      infoVersion: 'MySQL 版本', infoEdition: '版本说明', infoHost: '主机名', infoPort: '端口', infoUser: '用户',
+      infoOs: '操作系统', infoArch: '架构', infoDatadir: '数据目录', infoCharset: '字符集',
+      infoUptime: '运行时间', infoConnections: '累计连接数', infoThreads: '当前连接数', infoMaxConn: '最大连接数',
+      infoQueries: '已执行查询', infoSlowQueries: '慢查询数',
       test: '测试连接', ok: '连接成功', fail: '连接失败',
       queries: '查询', newTab: '新建查询', closeTab: '关闭', db: '数据库',
+      renameTab: '重命名查询', tabNamePlaceholder: '查询名称', searchTabs: '搜索查询', searchPlaceholder: '搜索查询名称...',
+      explain: 'EXPLAIN 分析', explainDone: 'EXPLAIN 执行计划',
+      dbMgmt: '数据库管理', dropDb: '删除数据库', confirmDropDb: '确定删除数据库「{name}」？此操作不可恢复。', dropDbOk: '数据库「{name}」已删除',
+      refreshDbs: '刷新数据库', confirmTitle: '确认操作', confirmYes: '确认删除',
+      searchDbs: '搜索数据库', searchUsers: '搜索用户', searchPlaceholder: '输入关键字筛选...', noDbs: '暂无数据库',
+      expand: '展开', collapse: '收起', collapseSide: '收起左栏', expandSide: '展开左栏',
+      newDb: '新建数据库', dbName: '数据库名称', dbNamePlaceholder: '例如：my_app_db', dbCharset: '字符集',
+      createDb: '创建', createDbOk: '数据库「{name}」创建成功', createDbFail: '创建数据库失败',
+      invalidDbName: '数据库名称只能包含字母、数字和下划线',
+      userMgmt: '用户管理', users: '用户列表', noUsers: '暂无用户', refreshUsers: '刷新用户',
+      newUser: '新建用户', account: '账户', accountHint: '格式：用户名@主机，如 app@% 或 app@localhost',
+      password: '密码', host: '主机', user: '用户名',
+      createUser: '创建用户', dropUser: '删除用户', changePwd: '修改密码', grant: '授权',
+      confirmDropUser: '确定删除该用户？', userOk: '操作成功', userFail: '操作失败',
+      grantPrivileges: '权限', grantTarget: '数据库(留空=全部)', grantHint: '如 ALL PRIVILEGES / SELECT,INSERT',
+      accountLocked: '锁定', accountExpired: '密码过期', yes: '是', no: '否',
       run: '执行 (⌘/Ctrl+Enter)', result: '结果', rows: '{n} 行', truncated: '仅显示前 {n} 行',
       noConn: '请先新建并选择一个连接。', noTab: '点「新建查询」打开一个查询页面。',
       sqlPlaceholder: 'SELECT * FROM table LIMIT 100;', databases: '刷新库', tables: '表',
@@ -49,8 +70,29 @@ window.__ModuleLoader__.load({
       importOk: 'Imported {n} connections', importFail: 'Import failed: invalid file format', exported: 'Exported {n} connections (no passwords)',
       group: 'Group', groupPlaceholder: 'Group name (blank = ungrouped)', ungrouped: 'Ungrouped', collapseAll: 'Collapse all', expandAll: 'Expand all',
       pwdHint: 'Passwords live in the local credential store, not browser storage', pwdEmpty: 'Leave blank to keep the stored password', secretClearFail: 'Delete aborted: the stored password could not be cleared', pwdSaved: 'Password saved to the local credential store', back: 'Back',
+      serverInfo: 'Server info', infoFail: 'Failed to load server info', infoClose: 'Hide info',
+      infoVersion: 'MySQL version', infoEdition: 'Edition', infoHost: 'Hostname', infoPort: 'Port', infoUser: 'User',
+      infoOs: 'OS', infoArch: 'Architecture', infoDatadir: 'Data directory', infoCharset: 'Charset',
+      infoUptime: 'Uptime', infoConnections: 'Total connections', infoThreads: 'Current connections', infoMaxConn: 'Max connections',
+      infoQueries: 'Queries executed', infoSlowQueries: 'Slow queries',
       test: 'Test connection', ok: 'Connected', fail: 'Connection failed',
       queries: 'Queries', newTab: 'New query', closeTab: 'Close', db: 'Database',
+      renameTab: 'Rename query', tabNamePlaceholder: 'Query name', searchTabs: 'Search queries', searchPlaceholder: 'Search query name...',
+      explain: 'EXPLAIN', explainDone: 'EXPLAIN plan',
+      dbMgmt: 'Databases', dropDb: 'Drop database', confirmDropDb: 'Delete database "{name}"? This cannot be undone.', dropDbOk: 'Database "{name}" dropped',
+      refreshDbs: 'Refresh databases', confirmTitle: 'Confirm', confirmYes: 'Delete',
+      searchDbs: 'Search databases', searchUsers: 'Search users', searchPlaceholder: 'Type to filter...', noDbs: 'No databases',
+      expand: 'Expand', collapse: 'Collapse', collapseSide: 'Hide sidebar', expandSide: 'Show sidebar',
+      newDb: 'New database', dbName: 'Database name', dbNamePlaceholder: 'e.g. my_app_db', dbCharset: 'Charset',
+      createDb: 'Create', createDbOk: 'Database "{name}" created', createDbFail: 'Failed to create database',
+      invalidDbName: 'Name may contain only letters, digits and underscores',
+      userMgmt: 'User management', users: 'Users', noUsers: 'No users', refreshUsers: 'Refresh users',
+      newUser: 'New user', account: 'Account', accountHint: 'Format: user@host, e.g. app@% or app@localhost',
+      password: 'Password', host: 'Host', user: 'User',
+      createUser: 'Create user', dropUser: 'Drop user', changePwd: 'Change password', grant: 'Grant',
+      confirmDropUser: 'Delete this user?', userOk: 'Operation succeeded', userFail: 'Operation failed',
+      grantPrivileges: 'Privileges', grantTarget: 'Database (blank = all)', grantHint: 'e.g. ALL PRIVILEGES / SELECT,INSERT',
+      accountLocked: 'Locked', accountExpired: 'Pwd expired', yes: 'Yes', no: 'No',
       run: 'Run (⌘/Ctrl+Enter)', result: 'Result', rows: '{n} rows', truncated: 'Showing first {n} rows',
       noConn: 'Create and select a connection first.', noTab: 'Click "New query" to open a query tab.',
       sqlPlaceholder: 'SELECT * FROM table LIMIT 100;', databases: 'Refresh DBs', tables: 'Tables',
@@ -105,11 +147,27 @@ window.__ModuleLoader__.load({
       const [form, setForm] = useState({ name: '', host: '127.0.0.1', port: 3306, user: 'root', password: '', group: '' })
       const [ping, setPing] = useState('')
       const [pingOk, setPingOk] = useState(false)
+      const [serverInfo, setServerInfo] = useState(null)
+      const [infoLoading, setInfoLoading] = useState(false)
       const fileRef = useRef(null)
       const [collapsed, setCollapsed] = useState({})
       const [tabs, setTabs] = useState(() => readJSON(TABS_KEY, []))
       const [activeTab, setActiveTab] = useState('')
+      const [tabSearch, setTabSearch] = useState('')
+      const [newDbOpen, setNewDbOpen] = useState(false)
+      const [newDbName, setNewDbName] = useState('')
+      const [newDbCharset, setNewDbCharset] = useState('utf8mb4')
+      const [confirmDialog, setConfirmDialog] = useState(null)
+      const [userMgmtOpen, setUserMgmtOpen] = useState(false)
+      const [users, setUsers] = useState([])
+      const [userForm, setUserForm] = useState({ account: '', password: '', privileges: 'ALL PRIVILEGES', database: '' })
+      const [userMode, setUserMode] = useState('create')
+      const [editingTab, setEditingTab] = useState('')
       const [databases, setDatabases] = useState([])
+      const [dbSearch, setDbSearch] = useState('')
+      const [userSearch, setUserSearch] = useState('')
+      const [formCollapsed, setFormCollapsed] = useState(false)
+      const [sideCollapsed, setSideCollapsed] = useState(false)
       const [tables, setTables] = useState([])
       const [busy, setBusy] = useState(false)
       const [err, setErr] = useState('')
@@ -122,6 +180,10 @@ window.__ModuleLoader__.load({
 
       const active = useMemo(() => conns.find((c) => c.id === activeId) || null, [conns, activeId])
       const tab = useMemo(() => tabs.find((x) => x.id === activeTab) || null, [tabs, activeTab])
+      const filteredTabs = useMemo(() => {
+        const q = tabSearch.trim().toLowerCase()
+        return q ? tabs.filter((x) => String(x.title || '').toLowerCase().includes(q)) : tabs
+      }, [tabs, tabSearch])
       // Group connections by their `group` field; empty group renders as "Ungrouped".
       const grouped = useMemo(() => {
         const map = new Map()
@@ -210,6 +272,16 @@ window.__ModuleLoader__.load({
         if (activeId === id) { setActiveId(''); setPing(''); setDatabases([]); setTables([]) }
       }, [activeId])
 
+      const loadServerInfo = useCallback(async () => {
+        if (!connCfg) return
+        setInfoLoading(true); setErr('')
+        try {
+          const d = await api('/info', { connection: connCfg })
+          setServerInfo(d.info || null)
+        } catch (e) { setErr(t('infoFail') + (e.message ? ': ' + e.message : '')); setServerInfo(null) }
+        finally { setInfoLoading(false) }
+      }, [connCfg])
+
       const testConn = useCallback(async () => {
         if (!connCfg) return
         setBusy(true); setErr(''); setPing(''); setPingOk(false)
@@ -289,6 +361,74 @@ window.__ModuleLoader__.load({
         } catch (e) { if (!silent) setErr(e.message) }
         finally { setBusy(false) }
       }, [connCfg])
+
+      const createDatabase = useCallback(async () => {
+        const name = (newDbName || '').trim()
+        if (!/^[A-Za-z0-9_]+$/.test(name)) { setErr(t('invalidDbName')); return }
+        if (!connCfg) return
+        setBusy(true); setErr('')
+        try {
+          await api('/createDatabase', { connection: connCfg, name, charset: newDbCharset })
+          setNewDbOpen(false); setNewDbName('')
+          await loadDatabases()
+          setErr(fmt(t('createDbOk'), { name }))
+          // Auto-select the new database in the active tab.
+          if (tab) patchTab(tab.id, { database: name })
+        } catch (e) { setErr(t('createDbFail') + (e.message ? ': ' + e.message : '')) }
+        finally { setBusy(false) }
+      }, [connCfg, newDbName, newDbCharset, loadDatabases, tab, patchTab])
+
+      // ---- user management -------------------------------------------------
+      const openDbMgmt = useCallback(() => {
+        setNewDbName(''); setNewDbCharset('utf8mb4'); setNewDbOpen(true)
+        loadDatabases()
+      }, [loadDatabases])
+
+      const doDropDatabase = useCallback(async (name) => {
+        if (!connCfg) return
+        setBusy(true); setErr('')
+        try {
+          await api('/dropDatabase', { connection: connCfg, name })
+          setErr(fmt(t('dropDbOk'), { name }))
+          await loadDatabases()
+          // If the dropped database was selected, clear it in all tabs.
+          setTabs((prev) => prev.map((x) => x.database === name ? { ...x, database: '' } : x))
+        } catch (e) { setErr((t('dropDb') || '删除失败') + (e.message ? ': ' + e.message : '')) }
+        finally { setBusy(false) }
+      }, [connCfg, loadDatabases])
+
+      const askDropDatabase = useCallback((name) => {
+        setConfirmDialog({ message: fmt(t('confirmDropDb'), { name }), onConfirm: () => doDropDatabase(name) })
+      }, [doDropDatabase])
+
+      const loadUsers = useCallback(async () => {
+        if (!connCfg) return
+        setBusy(true); setErr('')
+        try {
+          const d = await api('/users', { connection: connCfg })
+          setUsers(d.users || [])
+        } catch (e) { setErr(t('userFail') + (e.message ? ': ' + e.message : '')) }
+        finally { setBusy(false) }
+      }, [connCfg])
+
+      const openUserMgmt = useCallback(() => {
+        setUserForm({ account: '', password: '', privileges: 'ALL PRIVILEGES', database: '' })
+        setUserMode('create')
+        setUserMgmtOpen(true)
+        loadUsers()
+      }, [loadUsers])
+
+      const userAction = useCallback(async (route, payload, okMsg) => {
+        if (!connCfg) return
+        setBusy(true); setErr('')
+        try {
+          await api(route, { connection: connCfg, ...payload })
+          setErr(okMsg || t('userOk'))
+          await loadUsers()
+          return true
+        } catch (e) { setErr(t('userFail') + (e.message ? ': ' + e.message : '')); return false }
+        finally { setBusy(false) }
+      }, [connCfg, loadUsers])
 
       // Auto-load databases whenever the selected connection changes.
       const autoDbKey = activeId + '|' + (active ? active.host + ':' + active.port + ':' + active.user : '')
@@ -450,6 +590,21 @@ window.__ModuleLoader__.load({
         } catch (e) { setErr(e.message) }
       }, [])
 
+      const runExplain = useCallback(async () => {
+        if (!connCfg || !tab || !tab.sql.trim()) return
+        setBusy(true); setErr('')
+        try {
+          const d = await api('/explain', { connection: connCfg, database: tab.database, sql: tab.sql })
+          patchTab(tab.id, {
+            result: { columns: d.columns || [], rows: d.rows || [], truncated: !!d.truncated },
+            message: t('explainDone'),
+          })
+        } catch (e) {
+          setErr(e.message)
+          patchTab(tab.id, { result: null, message: t('error') + ': ' + e.message })
+        } finally { setBusy(false) }
+      }, [connCfg, tab, patchTab])
+
       const exportCsv = useCallback(() => {
         if (!tab || !tab.result || !tab.result.columns.length) return
         const esc = (v) => {
@@ -480,6 +635,12 @@ window.__ModuleLoader__.load({
         }
       }, [ctx])
 
+      const infoRow = (labelKey, value) =>
+        h('div', { className: 'dshMy-infoRow' },
+          h('span', { className: 'dshMy-infoLabel' }, t(labelKey)),
+          h('span', { className: 'dshMy-infoValue' }, value != null && value !== '' ? String(value) : '-')
+        )
+
       const formRow = (label, key, type) =>
         h('label', { className: 'dshMy-field' },
           h('span', null, t(label)),
@@ -507,18 +668,21 @@ window.__ModuleLoader__.load({
           )
         : h('div', { className: 'dshMy-note' }, tab && tab.message ? tab.message : t('noTab'))
 
-      return h('div', { className: 'dshMy-root' },
+      return h('div', { className: 'dshMy-root' + (sideCollapsed ? ' dshMy-sideOff' : '') },
         h('div', { className: 'dshMy-head' },
           h('div', null,
             h('div', { className: 'dshMy-title' }, t('title')),
             h('div', { className: 'dshMy-sub' }, t('subtitle'))
           ),
-          h('button', { type: 'button', className: 'dshMy-back', onClick: goBack }, t('back'))
+          h('div', { className: 'dshMy-headActions' },
+            h('button', { type: 'button', className: 'dshMy-back', title: sideCollapsed ? t('expandSide') : t('collapseSide'), onClick: () => setSideCollapsed((v) => !v) }, sideCollapsed ? '»' : '«'),
+            h('button', { type: 'button', className: 'dshMy-back', onClick: goBack }, t('back'))
+          )
         ),
         err ? h('div', { className: 'dshMy-err' }, err) : null,
-        h('div', { className: 'dshMy-cols' },
+        h('div', { className: 'dshMy-cols', style: sideCollapsed ? { gridTemplateColumns: 'minmax(0,1fr)' } : undefined },
           // left: connections + query tabs
-          h('div', { className: 'dshMy-col' },
+          h('div', { className: 'dshMy-col', style: sideCollapsed ? { display: 'none' } : undefined },
             h('div', { className: 'dshMy-card' },
               h('div', { className: 'dshMy-cardTitle' }, t('connections')),
               h('div', { className: 'dshMy-connList' },
@@ -554,21 +718,51 @@ window.__ModuleLoader__.load({
                       )
                     })
               ),
-              h('div', { className: 'dshMy-btnRow' },
+              h('div', { className: 'dshMy-btnGrid' },
                 h('button', { type: 'button', className: 'dshMy-btn dshMy-btnPrimary', onClick: () => { setEditing(null); setForm({ name: '', host: '127.0.0.1', port: 3306, user: 'root', password: '', group: '' }) } }, '+ ' + t('newConn')),
-                h('button', { type: 'button', className: 'dshMy-btn', disabled: !active || busy, onClick: testConn }, t('test'))
-              ),
-              h('div', { className: 'dshMy-btnRow' },
+                h('button', { type: 'button', className: 'dshMy-btn', disabled: !active || busy, onClick: testConn }, t('test')),
+                h('button', { type: 'button', className: 'dshMy-btn', disabled: !active || busy || infoLoading, onClick: serverInfo ? () => setServerInfo(null) : loadServerInfo }, infoLoading ? '...' : (serverInfo ? t('infoClose') : t('serverInfo'))),
+                active ? h('button', { type: 'button', className: 'dshMy-btn', disabled: busy, onClick: () => loadDatabases() }, t('databases')) : h('span'),
+                h('button', { type: 'button', className: 'dshMy-btn', disabled: !active, title: t('dbMgmt'), onClick: openDbMgmt }, t('dbMgmt')),
+                h('button', { type: 'button', className: 'dshMy-btn', disabled: !active, title: t('userMgmt'), onClick: openUserMgmt }, t('userMgmt')),
                 h('button', { type: 'button', className: 'dshMy-btn', title: t('export'), onClick: exportConns }, t('export')),
                 h('button', { type: 'button', className: 'dshMy-btn', title: t('import'), onClick: () => fileRef.current && fileRef.current.click() }, t('import'))
               ),
               h('input', { ref: fileRef, type: 'file', accept: '.json,application/json', style: { display: 'none' }, onChange: importConns }),
-              active ? h('button', { type: 'button', className: 'dshMy-btn dshMy-btnWide', disabled: busy, onClick: () => loadDatabases() }, t('databases')) : null,
-              ping ? h('div', { className: 'dshMy-ping ' + (pingOk ? 'dshMy-pingOk' : 'dshMy-pingFail') }, ping) : null
+              ping ? h('div', { className: 'dshMy-ping ' + (pingOk ? 'dshMy-pingOk' : 'dshMy-pingFail') }, ping) : null,
+              serverInfo
+                ? h('div', { className: 'dshMy-infoPanel' },
+                    h('div', { className: 'dshMy-infoTitle' }, t('serverInfo')),
+                    h('div', { className: 'dshMy-infoGrid' },
+                      infoRow('infoVersion', serverInfo.version),
+                      infoRow('infoEdition', serverInfo.edition),
+                      infoRow('infoHost', serverInfo.host),
+                      infoRow('infoPort', serverInfo.port),
+                      infoRow('infoUser', serverInfo.user),
+                      infoRow('infoOs', serverInfo.os),
+                      infoRow('infoArch', serverInfo.arch),
+                      infoRow('infoDatadir', serverInfo.datadir),
+                      infoRow('infoCharset', serverInfo.charset),
+                      infoRow('infoUptime', serverInfo.uptime),
+                      infoRow('infoConnections', serverInfo.connections),
+                      infoRow('infoThreads', serverInfo.threads),
+                      infoRow('infoMaxConn', serverInfo.maxConnections),
+                      infoRow('infoQueries', serverInfo.queries),
+                      infoRow('infoSlowQueries', serverInfo.slowQueries)
+                    )
+                  )
+                : null
             ),
             h('div', { className: 'dshMy-card' },
-              h('div', { className: 'dshMy-cardTitle' }, editing ? t('edit') : t('newConn')),
-              h('div', { className: 'dshMy-form' },
+              h('div', {
+                className: 'dshMy-cardTitle dshMy-cardToggle',
+                title: formCollapsed ? t('expand') : t('collapse'),
+                onClick: () => setFormCollapsed((v) => !v),
+              },
+                h('span', { className: 'dshMy-toggleArrow' }, formCollapsed ? '▸' : '▾'),
+                formCollapsed ? t('newConn') : (editing ? t('edit') : t('newConn'))
+              ),
+              formCollapsed ? null : h('div', { className: 'dshMy-form' },
                 formRow('name', 'name'), formRow('host', 'host'),
                 formRow('port', 'port', 'number'), formRow('user', 'user'), formRow('password', 'password', 'password'),
                 h('label', { className: 'dshMy-field' },
@@ -586,21 +780,44 @@ window.__ModuleLoader__.load({
                 h('button', { type: 'button', className: 'dshMy-btn dshMy-btnPrimary', onClick: saveConn }, t('save'))
               )
             ),
-            h('div', { className: 'dshMy-card dshMy-grow' },
+            h('div', { className: 'dshMy-card dshMy-grow dshMy-queries' },
               h('div', { className: 'dshMy-cardTitle' }, t('queries')),
+              h('input', {
+                className: 'dshMy-input dshMy-tabSearch', type: 'text',
+                value: tabSearch, placeholder: t('searchPlaceholder'),
+                onChange: (e) => setTabSearch(e.target.value),
+              }),
               h('div', { className: 'dshMy-tabs' },
                 tabs.length === 0
                   ? h('div', { className: 'dshMy-note' }, t('noTab'))
-                  : tabs.map((x) =>
-                      h('div', {
-                        key: x.id,
-                        className: 'dshMy-tab' + (activeTab === x.id ? ' dshMy-tabOn' : ''),
-                        onClick: () => setActiveTab(x.id),
-                      },
-                        h('span', null, x.title),
-                        h('button', { type: 'button', className: 'dshMy-mini', onClick: (e) => { e.stopPropagation(); closeTab(x.id) } }, '×')
+                  : filteredTabs.length === 0
+                    ? h('div', { className: 'dshMy-note' }, t('noTab'))
+                    : filteredTabs.map((x) =>
+                        h('div', {
+                          key: x.id,
+                          className: 'dshMy-tab' + (activeTab === x.id ? ' dshMy-tabOn' : ''),
+                          onClick: () => setActiveTab(x.id),
+                        },
+                          editingTab === x.id
+                            ? h('input', {
+                                className: 'dshMy-input dshMy-tabEdit', autoFocus: true,
+                                value: x.title, placeholder: t('tabNamePlaceholder'),
+                                onClick: (e) => e.stopPropagation(),
+                                onChange: (e) => patchTab(x.id, { title: e.target.value }),
+                                onBlur: () => setEditingTab(''),
+                                onKeyDown: (e) => { if (e.key === 'Enter' || e.key === 'Escape') setEditingTab('') },
+                              })
+                            : h('span', {
+                                title: t('renameTab') + ' (双击)',
+                                onDoubleClick: (e) => { e.stopPropagation(); setEditingTab(x.id) },
+                              }, x.title),
+                          h('button', {
+                            type: 'button', className: 'dshMy-mini', title: t('renameTab'),
+                            onClick: (e) => { e.stopPropagation(); setEditingTab(x.id) },
+                          }, '✎'),
+                          h('button', { type: 'button', className: 'dshMy-mini', onClick: (e) => { e.stopPropagation(); closeTab(x.id) } }, '×')
+                        )
                       )
-                    )
               ),
               h('button', { type: 'button', className: 'dshMy-btn', onClick: addTab }, '+ ' + t('newTab'))
             )
@@ -618,7 +835,8 @@ window.__ModuleLoader__.load({
                       h('option', { value: '' }, '-'),
                       databases.map((db) => h('option', { key: db, value: db }, db))
                     ),
-                    h('button', { type: 'button', className: 'dshMy-btn dshMy-btnPrimary', disabled: busy || !connCfg, onClick: runSql }, t('run'))
+                    h('button', { type: 'button', className: 'dshMy-btn dshMy-btnPrimary', disabled: busy || !connCfg, onClick: runSql }, t('run')),
+                    h('button', { type: 'button', className: 'dshMy-btn', disabled: busy || !connCfg || !tab.sql.trim(), title: t('explain'), onClick: runExplain }, t('explain'))
                   ),
                   h('textarea', {
                     className: 'dshMy-sql', value: tab.sql, spellCheck: false,
@@ -714,6 +932,148 @@ window.__ModuleLoader__.load({
             : null
           ),
 
+          // database management modal
+          newDbOpen
+            ? h('div', { className: 'dshMy-modalMask', onClick: () => setNewDbOpen(false) },
+                h('div', { className: 'dshMy-modal dshMy-modalWide', onClick: (e) => e.stopPropagation() },
+                  h('div', { className: 'dshMy-modalTitle' }, t('dbMgmt')),
+                  h('div', { className: 'dshMy-userToolbar' },
+                    h('input', {
+                      className: 'dshMy-input dshMy-listSearch', type: 'text', value: dbSearch,
+                      placeholder: t('searchPlaceholder'), onChange: (e) => setDbSearch(e.target.value),
+                    }),
+                    h('button', { type: 'button', className: 'dshMy-btn dshMy-btnSm', disabled: busy, onClick: () => loadDatabases() }, '↻ ' + t('refreshDbs'))
+                  ),
+                  h('div', { className: 'dshMy-userList' },
+                    databases.filter((db) => String(db).toLowerCase().includes(dbSearch.trim().toLowerCase())).length
+                      ? databases.filter((db) => String(db).toLowerCase().includes(dbSearch.trim().toLowerCase())).map((db) =>
+                          h('div', { key: db, className: 'dshMy-userRow' },
+                            h('span', { className: 'dshMy-userName' }, db),
+                            h('button', {
+                              type: 'button', className: 'dshMy-btn dshMy-btnSm dshMy-del', disabled: busy,
+                              onClick: () => askDropDatabase(db),
+                            }, t('dropDb'))
+                          )
+                        )
+                      : h('div', { className: 'dshMy-note' }, databases.length ? t('searchPlaceholder') : t('noDbs'))
+                  ),
+                  h('div', { className: 'dshMy-userForm' },
+                    h('div', { className: 'dshMy-modalTitle' }, t('newDb')),
+                    h('label', { className: 'dshMy-field' },
+                      h('span', null, t('dbName')),
+                      h('input', {
+                        className: 'dshMy-input', value: newDbName,
+                        placeholder: t('dbNamePlaceholder'),
+                        onChange: (e) => setNewDbName(e.target.value),
+                        onKeyDown: (e) => { if (e.key === 'Enter') createDatabase() },
+                      })
+                    ),
+                    h('label', { className: 'dshMy-field' },
+                      h('span', null, t('dbCharset')),
+                      h('select', { className: 'dshMy-select', value: newDbCharset, onChange: (e) => setNewDbCharset(e.target.value) },
+                        ['utf8mb4', 'utf8', 'latin1', 'gbk'].map((cs) => h('option', { key: cs, value: cs }, cs))
+                      )
+                    ),
+                    h('div', { className: 'dshMy-modalActions' },
+                      h('button', { type: 'button', className: 'dshMy-btn', onClick: () => setNewDbOpen(false) }, t('cancel')),
+                      h('button', { type: 'button', className: 'dshMy-btn dshMy-btnPrimary', disabled: busy || !newDbName.trim(), onClick: createDatabase }, t('createDb'))
+                    )
+                  )
+                )
+              )
+            : null,
+
+          // user-management modal
+          userMgmtOpen
+            ? h('div', { className: 'dshMy-modalMask', onClick: () => setUserMgmtOpen(false) },
+                h('div', { className: 'dshMy-modal dshMy-modalWide', onClick: (e) => e.stopPropagation() },
+                  h('div', { className: 'dshMy-modalTitle' }, t('userMgmt')),
+                  h('div', { className: 'dshMy-userToolbar' },
+                    h('input', {
+                      className: 'dshMy-input dshMy-listSearch', type: 'text', value: userSearch,
+                      placeholder: t('searchPlaceholder'), onChange: (e) => setUserSearch(e.target.value),
+                    }),
+                    h('button', { type: 'button', className: 'dshMy-btn dshMy-btnSm', disabled: busy, onClick: loadUsers }, '↻ ' + t('refreshUsers'))
+                  ),
+                  h('div', { className: 'dshMy-userList' },
+                    users.filter((u) => (u.user + '@' + u.host).toLowerCase().includes(userSearch.trim().toLowerCase())).length
+                      ? users.filter((u) => (u.user + '@' + u.host).toLowerCase().includes(userSearch.trim().toLowerCase())).map((u) => {
+                          const account = u.user + '@' + u.host
+                          return h('div', { key: account, className: 'dshMy-userRow' },
+                            h('div', { className: 'dshMy-userInfo' },
+                              h('span', { className: 'dshMy-userName' }, account),
+                              h('span', { className: 'dshMy-userMeta' },
+                                (u.locked === 'Y' ? t('accountLocked') + ' · ' : '') + (u.expired === 'Y' ? t('accountExpired') : '')
+                              )
+                            ),
+                            h('div', { className: 'dshMy-userActions' },
+                              h('button', { type: 'button', className: 'dshMy-btn dshMy-btnSm', disabled: busy, onClick: () => {
+                                setUserMode('password'); setUserForm({ account, password: '', privileges: 'ALL PRIVILEGES', database: '' })
+                              } }, t('changePwd')),
+                              h('button', { type: 'button', className: 'dshMy-btn dshMy-btnSm', disabled: busy, onClick: () => {
+                                setUserMode('grant'); setUserForm({ account, password: '', privileges: 'ALL PRIVILEGES', database: '' })
+                              } }, t('grant')),
+                              h('button', { type: 'button', className: 'dshMy-btn dshMy-btnSm dshMy-del', disabled: busy, onClick: () => {
+                                setConfirmDialog({ message: t('confirmDropUser') + ' ' + account, onConfirm: () => userAction('/dropUser', { account }) })
+                              } }, t('dropUser'))
+                            )
+                          )
+                        })
+                      : h('div', { className: 'dshMy-note' }, users.length ? t('searchPlaceholder') : t('noUsers'))
+                  ),
+                  h('div', { className: 'dshMy-userForm' },
+                    h('div', { className: 'dshMy-modalTitle' },
+                      userMode === 'create' ? t('newUser') : (userMode === 'password' ? t('changePwd') : t('grant'))
+                    ),
+                    userMode === 'grant'
+                      ? null
+                      : h('label', { className: 'dshMy-field' },
+                          h('span', null, t('account') + ' — ' + t('accountHint')),
+                          h('input', {
+                            className: 'dshMy-input', value: userForm.account, placeholder: 'app@%',
+                            disabled: userMode === 'password',
+                            onChange: (e) => setUserForm((f) => ({ ...f, account: e.target.value })),
+                          })
+                        ),
+                    userMode === 'grant'
+                      ? h('div', { className: 'dshMy-formRow' },
+                          h('input', { className: 'dshMy-input', value: userForm.privileges, placeholder: t('grantHint'), onChange: (e) => setUserForm((f) => ({ ...f, privileges: e.target.value })) }),
+                          h('input', { className: 'dshMy-input', value: userForm.database, placeholder: t('grantTarget'), onChange: (e) => setUserForm((f) => ({ ...f, database: e.target.value })) })
+                        )
+                      : h('label', { className: 'dshMy-field' },
+                          h('span', null, t('password')),
+                          h('input', { className: 'dshMy-input', type: 'password', value: userForm.password, onChange: (e) => setUserForm((f) => ({ ...f, password: e.target.value })) })
+                        ),
+                    h('div', { className: 'dshMy-modalActions' },
+                      h('button', { type: 'button', className: 'dshMy-btn', onClick: () => setUserMgmtOpen(false) }, t('cancel')),
+                      userMode === 'create'
+                        ? h('button', { type: 'button', className: 'dshMy-btn dshMy-btnPrimary', disabled: busy || !userForm.account.trim(), onClick: () => userAction('/createUser', { account: userForm.account, password: userForm.password }) }, t('createUser'))
+                        : (userMode === 'password'
+                            ? h('button', { type: 'button', className: 'dshMy-btn dshMy-btnPrimary', disabled: busy || !userForm.account, onClick: () => userAction('/changePassword', { account: userForm.account, password: userForm.password }) }, t('changePwd'))
+                            : h('button', { type: 'button', className: 'dshMy-btn dshMy-btnPrimary', disabled: busy || !userForm.account, onClick: () => userAction('/grantPrivileges', { account: userForm.account, privileges: userForm.privileges, database: userForm.database }) }, t('grant')))
+                    )
+                  )
+                )
+              )
+            : null,
+
+          // confirmation dialog (topmost, over the management modals)
+          confirmDialog
+            ? h('div', { className: 'dshMy-modalMask dshMy-confirmMask', onClick: () => setConfirmDialog(null) },
+                h('div', { className: 'dshMy-modal dshMy-confirm', onClick: (e) => e.stopPropagation() },
+                  h('div', { className: 'dshMy-modalTitle' }, t('confirmTitle')),
+                  h('div', { className: 'dshMy-confirmMsg' }, confirmDialog.message),
+                  h('div', { className: 'dshMy-modalActions' },
+                    h('button', { type: 'button', className: 'dshMy-btn', onClick: () => setConfirmDialog(null) }, t('cancel')),
+                    h('button', { type: 'button', className: 'dshMy-btn dshMy-btnPrimary', onClick: () => {
+                      const fn = confirmDialog.onConfirm
+                      setConfirmDialog(null)
+                      if (fn) fn()
+                    } }, t('confirmYes'))
+                  )
+                )
+              )
+            : null
         )
       )
     }
@@ -742,6 +1102,9 @@ window.__ModuleLoader__.load({
       style.textContent = `
 .dshMy-root{display:flex;flex-direction:column;height:100%;box-sizing:border-box;padding:14px 18px 18px;gap:10px;overflow:hidden;color:var(--dsw-alias-label-primary);background:var(--dsw-alias-bg-base)}
 .dshMy-head{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;flex:0 0 auto}
+.dshMy-headActions{display:flex;align-items:center;gap:6px}
+.dshMy-sideOff .dshMy-cols{grid-template-columns:minmax(0,1fr)}
+.dshMy-sideOff .dshMy-cols > .dshMy-col:first-child{display:none}
 .dshMy-title{font-size:20px;font-weight:700;line-height:1.3}
 .dshMy-sub{font-size:12px;color:var(--dsw-alias-label-secondary);margin-top:3px}
 .dshMy-back{display:inline-flex;align-items:center;border:1px solid var(--dsw-alias-border-l2);background:var(--dsw-alias-bg-layer-1);color:var(--dsw-alias-label-primary);font-size:12px;padding:5px 11px;border-radius:8px;cursor:pointer;font-family:inherit;white-space:nowrap}
@@ -753,6 +1116,10 @@ window.__ModuleLoader__.load({
 .dshMy-grow{flex:1 1 auto;min-height:0}
 .dshMy-empty{align-items:center;justify-content:center;color:var(--dsw-alias-label-secondary);font-size:13px}
 .dshMy-cardTitle{font-size:12px;font-weight:600;color:var(--dsw-alias-label-secondary)}
+.dshMy-cardToggle{cursor:pointer;display:flex;align-items:center;gap:6px;user-select:none}
+.dshMy-cardToggle:hover{color:var(--dsw-alias-label-primary)}
+.dshMy-toggleArrow{width:10px;flex:0 0 auto;font-size:10px}
+.dshMy-queries{overflow-y:auto}
 .dshMy-note{font-size:11px;color:var(--dsw-alias-label-secondary);line-height:1.5}
 .dshMy-err{font-size:11px;color:var(--dsw-alias-state-error-primary)}
 .dshMy-btn{padding:7px 11px;border-radius:8px;border:1px solid var(--dsw-alias-border-l2);background:var(--dsw-alias-bg-layer-1);color:var(--dsw-alias-label-primary);font-size:12px;cursor:pointer;font-family:inherit;white-space:nowrap}
@@ -767,9 +1134,14 @@ window.__ModuleLoader__.load({
 .dshMy-groupArrow{width:10px;flex:0 0 auto}
 .dshMy-groupName{flex:1 1 auto;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .dshMy-groupCount{font-weight:500;font-size:10px;opacity:.65;margin-left:1px}
-.dshMy-btnRow{display:grid;grid-template-columns:1fr 1fr;gap:8px}
-.dshMy-btnRow .dshMy-btn{width:100%}
-.dshMy-btnWide{width:100%}
+.dshMy-btnGrid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.dshMy-btnGrid .dshMy-btn{width:100%;min-width:0}
+.dshMy-infoPanel{margin-top:8px;border:1px solid var(--dsw-alias-border-l2);border-radius:8px;background:var(--dsw-alias-bg-layer-1);padding:8px 10px}
+.dshMy-infoTitle{font-size:11px;font-weight:600;color:var(--dsw-alias-label-primary);margin-bottom:6px}
+.dshMy-infoGrid{display:grid;grid-template-columns:1fr;gap:3px}
+.dshMy-infoRow{display:flex;justify-content:space-between;gap:10px;font-size:11px;line-height:1.5}
+.dshMy-infoLabel{color:var(--dsw-alias-label-secondary);flex:0 0 auto}
+.dshMy-infoValue{color:var(--dsw-alias-label-primary);text-align:right;word-break:break-all;user-select:text}
 .dshMy-ping{font-size:11px;line-height:1.5;font-weight:600;padding:4px 0}
 .dshMy-pingOk{color:#2e7d32}
 .dshMy-pingFail{color:var(--dsw-alias-state-error-primary)}
@@ -783,7 +1155,34 @@ window.__ModuleLoader__.load({
 .dshMy-field{display:flex;flex-direction:column;gap:3px;font-size:11px;color:var(--dsw-alias-label-secondary)}
 .dshMy-input,.dshMy-select{padding:6px 9px;border-radius:7px;border:1px solid var(--dsw-alias-border-l2);background:var(--dsw-alias-bg-base);color:var(--dsw-alias-label-primary);font-size:12px;outline:none;font-family:inherit;min-width:0}
 .dshMy-input:focus,.dshMy-select:focus{border-color:var(--dsw-alias-brand-primary)}
-.dshMy-tabs{display:flex;flex-direction:column;gap:3px;max-height:160px;overflow-y:auto}
+
+.dshMy-tabSearch{width:100%;box-sizing:border-box;margin-bottom:5px;font-size:11px;padding:5px 8px}
+.dshMy-modalMask{position:fixed;inset:0;z-index:1000;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,.45)}
+.dshMy-modal{width:min(360px,90vw);background:var(--dsw-alias-bg-layer-1);border:1px solid var(--dsw-alias-border-l2);border-radius:12px;padding:18px;box-shadow:0 8px 30px rgba(0,0,0,.3)}
+.dshMy-modalTitle{font-size:14px;font-weight:600;color:var(--dsw-alias-label-primary);margin-bottom:14px}
+.dshMy-modal .dshMy-field{display:flex;flex-direction:column;gap:5px;margin-bottom:12px;font-size:12px;color:var(--dsw-alias-label-secondary)}
+.dshMy-modalActions{display:flex;justify-content:flex-end;gap:8px;margin-top:16px}
+.dshMy-modalWide{width:min(640px,94vw);max-height:86vh;overflow-y:auto}
+.dshMy-confirmMask{z-index:1100}
+.dshMy-confirm{width:min(380px,90vw)}
+.dshMy-confirmMsg{font-size:13px;color:var(--dsw-alias-label-secondary);line-height:1.6;word-break:break-word}
+.dshMy-userToolbar{display:flex;justify-content:flex-end;margin-bottom:8px}
+.dshMy-listSearch{flex:1 1 auto;min-width:0;font-size:11px;padding:5px 8px}
+.dshMy-userToolbar{gap:8px;align-items:center}
+.dshMy-userList{max-height:260px;overflow-y:auto;border:1px solid var(--dsw-alias-border-l2);border-radius:8px;margin-bottom:14px}
+.dshMy-userRow{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:7px 10px;border-bottom:1px solid var(--dsw-alias-border-l1)}
+.dshMy-userRow:last-child{border-bottom:none}
+.dshMy-userInfo{display:flex;flex-direction:column;gap:2px;min-width:0}
+.dshMy-userName{font-size:12px;font-weight:600;color:var(--dsw-alias-label-primary);word-break:break-all}
+.dshMy-userMeta{font-size:10px;color:var(--dsw-alias-state-warning-primary,#c77800)}
+.dshMy-userActions{display:flex;gap:5px;flex:0 0 auto}
+.dshMy-userForm{border-top:1px solid var(--dsw-alias-border-l2);padding-top:12px}
+.dshMy-userForm .dshMy-modalTitle{margin-bottom:10px}
+.dshMy-formRow{display:flex;gap:8px;margin-bottom:12px}
+.dshMy-formRow .dshMy-input{flex:1 1 0;min-width:0}
+.dshMy-tabEdit{flex:1 1 auto;font-size:11px;padding:2px 5px;height:auto;min-width:0}
+.dshMy-tabs{display:flex;flex-direction:column;gap:3px;max-height:200px;overflow-y:auto}
+.dshMy-tables{max-height:120px;overflow-y:auto}
 .dshMy-tab{display:flex;align-items:center;gap:6px;padding:6px 8px;border-radius:7px;background:var(--dsw-alias-bg-layer-2);font-size:12px;cursor:pointer}
 .dshMy-tabOn{outline:1px solid #e48b2b}
 .dshMy-tab span{flex:1 1 auto}

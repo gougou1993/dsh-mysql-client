@@ -194,6 +194,43 @@ export function apply(ctx) {
       } catch (error) { return failure(error, '连接测试失败。') }
     }))
 
+    // Server information via SHOW VARIABLES / SHOW GLOBAL STATUS.
+    register(route('info', ['POST'], async (request) => {
+      try {
+        const body = await readBody(request)
+        const cfg = await withStoredPassword(ctx, body.connection || {})
+        const varRows = toTable((await runQuery(cfg, '', 'SHOW VARIABLES')).rows, null).rows
+        const statusRows = toTable((await runQuery(cfg, '', 'SHOW GLOBAL STATUS')).rows, null).rows
+        const variables = {}
+        const status = {}
+        for (const r of varRows) if (r[0] != null) variables[String(r[0]).toLowerCase()] = r[1]
+        for (const r of statusRows) if (r[0] != null) status[String(r[0]).toLowerCase()] = r[1]
+        const uptimeSec = Number(status.uptime || 0)
+        const days = Math.floor(uptimeSec / 86400)
+        const hours = Math.floor((uptimeSec % 86400) / 3600)
+        const minutes = Math.floor((uptimeSec % 3600) / 60)
+        const uptime = [days ? days + 'd' : '', hours ? hours + 'h' : '', minutes + 'm'].filter(Boolean).join(' ') || (uptimeSec + 's')
+        const info = {
+          version: variables.version || '-',
+          edition: variables.version_comment || variables.version_compile_os || '-',
+          host: variables.hostname || '-',
+          port: variables.port || '-',
+          user: variables.user || '-',
+          os: variables.version_compile_os || '-',
+          arch: variables.system_architecture || '-',
+          datadir: variables.datadir || '-',
+          charset: variables.character_set_server || '-',
+          uptime, uptimeSec,
+          connections: status.connections || '-',
+          threads: status.threads_connected || '-',
+          maxConnections: variables.max_connections || '-',
+          queries: status.questions || status.queries || '-',
+          slowQueries: status.slow_queries || '-',
+        }
+        return json({ info })
+      } catch (error) { return failure(error, '无法读取服务器信息。') }
+    }))
+
     // List databases.
     register(route('databases', ['POST'], async (request) => {
       try {
@@ -204,6 +241,38 @@ export function apply(ctx) {
         const databases = t.rows.map((r) => r[0]).filter(Boolean)
         return json({ databases })
       } catch (error) { return failure(error, '无法读取数据库列表。') }
+    }))
+
+    // Create a new database. Names are strictly validated and backtick-escaped.
+    register(route('createDatabase', ['POST'], async (request) => {
+      try {
+        const body = await readBody(request)
+        const name = typeof body.name === 'string' ? body.name.trim() : ''
+        if (!name) throw new SqlError('请输入数据库名称。')
+        if (!/^[A-Za-z0-9_]+$/.test(name)) throw new SqlError('数据库名称只能包含字母、数字和下划线。')
+        if (name.length > 64) throw new SqlError('数据库名称不能超过 64 个字符。')
+        const cfg = await withStoredPassword(ctx, body.connection || {})
+        const charset = typeof body.charset === 'string' && /^[A-Za-z0-9_]+$/.test(body.charset) ? body.charset : 'utf8mb4'
+        const escaped = '`' + name.replace(/`/g, '``') + '`'
+        await runQuery(cfg, '', 'CREATE DATABASE IF NOT EXISTS ' + escaped + ' CHARACTER SET ' + charset)
+        return json({ ok: true, name })
+      } catch (error) { return failure(error, '创建数据库失败。') }
+    }))
+
+    // Drop a database. Name is strictly validated and backtick-escaped.
+    register(route('dropDatabase', ['POST'], async (request) => {
+      try {
+        const body = await readBody(request)
+        const name = typeof body.name === 'string' ? body.name.trim() : ''
+        if (!name) throw new SqlError('请输入数据库名称。')
+        if (!/^[A-Za-z0-9_]+$/.test(name)) throw new SqlError('数据库名称只能包含字母、数字和下划线。')
+        const protectedDbs = ['information_schema', 'mysql', 'performance_schema', 'sys']
+        if (protectedDbs.includes(name.toLowerCase())) throw new SqlError('系统数据库不允许删除。')
+        const cfg = await withStoredPassword(ctx, body.connection || {})
+        const escaped = '`' + name.replace(/`/g, '``') + '`'
+        await runQuery(cfg, '', 'DROP DATABASE IF EXISTS ' + escaped)
+        return json({ ok: true, name })
+      } catch (error) { return failure(error, '删除数据库失败。') }
     }))
 
     // List tables of a database.
@@ -303,6 +372,104 @@ export function apply(ctx) {
     }))
 
     // --- connection secrets: passwords live in DSH credentials, never in the browser ---
+    // EXPLAIN: prefix the statement with EXPLAIN and return its query plan.
+    register(route('explain', ['POST'], async (request) => {
+      try {
+        const body = await readBody(request)
+        let sql = typeof body.sql === 'string' ? body.sql.trim() : ''
+        if (!sql) throw new SqlError('请输入 SQL。')
+        sql = sql.replace(/;+\s*$/, '')
+        // Avoid double EXPLAIN if the user already wrote one.
+        if (!/^EXPLAIN\s/i.test(sql)) sql = 'EXPLAIN ' + sql
+        const cfg = await withStoredPassword(ctx, body.connection || {})
+        const { rows, fields } = await runQuery(cfg, body.database || '', sql)
+        const table = toTable(rows, fields)
+        return json({ columns: table.columns, rows: table.rows, truncated: table.truncated, sql })
+      } catch (error) { return failure(error, 'EXPLAIN 执行失败。') }
+    }))
+
+    // --- user management ---------------------------------------------------
+    // Quote a MySQL identifier component (user/host) inside single quotes for
+    // CREATE/DROP/ALTER USER, escaping embedded quotes and backslashes.
+    function qid(value) {
+      return "'" + String(value).replace(/\\/g, '\\\\').replace(/'/g, "''") + "'"
+    }
+    function qident(value) {
+      return '`' + String(value).replace(/`/g, '``') + '`'
+    }
+    // Accept either 'user'@'host' or a bare user (defaults to '%').
+    function splitUserHost(raw) {
+      const text = String(raw || '').trim()
+      const m = text.match(/^([^@]+)@(.+)$/)
+      return m ? { user: m[1].trim(), host: m[2].trim() } : { user: text, host: '%' }
+    }
+
+    register(route('users', ['POST'], async (request) => {
+      try {
+        const body = await readBody(request)
+        const cfg = await withStoredPassword(ctx, body.connection || {})
+        const { rows, fields } = await runQuery(cfg, '', 'SELECT User AS user, Host AS host, account_locked, password_expired FROM mysql.user ORDER BY User, Host')
+        const table = toTable(rows, fields)
+        const users = table.rows.map((r) => ({
+          user: r[0] != null ? String(r[0]) : '',
+          host: r[1] != null ? String(r[1]) : '',
+          locked: r[2] != null ? String(r[2]) : '',
+          expired: r[3] != null ? String(r[3]) : '',
+        }))
+        return json({ users })
+      } catch (error) { return failure(error, '无法读取用户列表。') }
+    }))
+
+    register(route('createUser', ['POST'], async (request) => {
+      try {
+        const body = await readBody(request)
+        const { user, host } = splitUserHost(body.account)
+        if (!user) throw new SqlError('请输入用户名。')
+        const password = typeof body.password === 'string' ? body.password : ''
+        const cfg = await withStoredPassword(ctx, body.connection || {})
+        const sql = 'CREATE USER ' + qid(user) + '@' + qid(host || '%') + ' IDENTIFIED BY ' + qid(password)
+        await runQuery(cfg, '', sql)
+        return json({ ok: true })
+      } catch (error) { return failure(error, '创建用户失败。') }
+    }))
+
+    register(route('dropUser', ['POST'], async (request) => {
+      try {
+        const body = await readBody(request)
+        const { user, host } = splitUserHost(body.account)
+        if (!user) throw new SqlError('请输入用户名。')
+        const cfg = await withStoredPassword(ctx, body.connection || {})
+        await runQuery(cfg, '', 'DROP USER ' + qid(user) + '@' + qid(host || '%'))
+        return json({ ok: true })
+      } catch (error) { return failure(error, '删除用户失败。') }
+    }))
+
+    register(route('changePassword', ['POST'], async (request) => {
+      try {
+        const body = await readBody(request)
+        const { user, host } = splitUserHost(body.account)
+        if (!user) throw new SqlError('请输入用户名。')
+        const password = typeof body.password === 'string' ? body.password : ''
+        const cfg = await withStoredPassword(ctx, body.connection || {})
+        await runQuery(cfg, '', 'ALTER USER ' + qid(user) + '@' + qid(host || '%') + ' IDENTIFIED BY ' + qid(password))
+        return json({ ok: true })
+      } catch (error) { return failure(error, '修改密码失败。') }
+    }))
+
+    register(route('grantPrivileges', ['POST'], async (request) => {
+      try {
+        const body = await readBody(request)
+        const { user, host } = splitUserHost(body.account)
+        if (!user) throw new SqlError('请输入用户名。')
+        const privileges = typeof body.privileges === 'string' && /^[A-Z_, ]+$/i.test(body.privileges) ? body.privileges.toUpperCase() : 'ALL PRIVILEGES'
+        const target = body.database && /^[A-Za-z0-9_]+$/.test(body.database) ? qident(body.database) + '.*' : '*.*'
+        const cfg = await withStoredPassword(ctx, body.connection || {})
+        await runQuery(cfg, '', 'GRANT ' + privileges + ' ON ' + target + ' TO ' + qid(user) + '@' + qid(host || '%'))
+        await runQuery(cfg, '', 'FLUSH PRIVILEGES')
+        return json({ ok: true })
+      } catch (error) { return failure(error, '授权失败。') }
+    }))
+
     register(route('secret_set', ['POST'], async (request) => {
       try {
         const body = await readBody(request)

@@ -9,7 +9,7 @@ SQL execution runs on the Host through the pure-JavaScript `mysql2` driver, so *
 | Field | Value |
 | --- | --- |
 | Package | `@oakzhong/dsh-mysql-client` |
-| Version | `1.1.1` |
+| Version | `1.1.2` |
 | Entry | `index.js` (Host) · `client.js` (Client) |
 | Type | DSH bundle plugin, ES module (`"type": "module"`, private) |
 | Description | A MySQL client with connection management, query tabs and SQL execution. |

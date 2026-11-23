@@ -473,7 +473,11 @@ window.__ModuleLoader__.load({
       }, [tab, structTable, download])
 
       const goBack = useCallback(() => {
-        try { if (ctx && ctx.layout) ctx.layout.selectPanel('conversation') } catch (_) {}
+        const layout = ctx && ctx.layout
+        if (!layout || typeof layout.selectPanel !== 'function') return
+        try { layout.selectPanel(null) } catch (_) {
+          try { layout.selectPanel('conversation') } catch (_) {}
+        }
       }, [ctx])
 
       const formRow = (label, key, type) =>
@@ -814,6 +818,6 @@ window.__ModuleLoader__.load({
       return () => { style.remove() }
     }
 
-    return { inject: ['slots', 'locale'], apply }
+    return { inject: ['slots', 'locale', 'layout'], apply }
   },
 })

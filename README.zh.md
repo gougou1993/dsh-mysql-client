@@ -9,7 +9,7 @@ SQL 执行在宿主端通过纯 JavaScript 的 `mysql2` 驱动完成，因此**�
 | 字段 | 值 |
 | --- | --- |
 | 包名 | `@oakzhong/dsh-mysql-client` |
-| 版本 | `1.2.1` |
+| 版本 | `1.2.2` |
 | 入口 | `index.js`（宿主）· `client.js`（客户端） |
 | 类型 | DSH bundle 插件，ES 模块（`"type": "module"`、`"private": false`、公开发布） |
 | 侧边栏入口 | MySQL 客户端（左侧） |
